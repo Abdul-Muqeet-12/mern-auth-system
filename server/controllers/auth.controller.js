@@ -52,7 +52,7 @@ export const register = async (req, res) => {
 
     console.log("Email Sent");
 
-    return res.status(200).json({
+    return res.status(201).json({
       success: true,
       message: "User Registered Successfully",
       user: {
@@ -135,7 +135,7 @@ export const logout = async (req, res) => {
 //Send Verification OTP to the User's Email
 export const sendVerifyOtp = async (req, res) => {
   try {
-    const { userId } = req.body;
+    const userId = req.userId;
 
     const user = await userModel.findById(userId);
 
@@ -184,8 +184,10 @@ export const sendVerifyOtp = async (req, res) => {
   }
 };
 
+// Verify the Email using the OTP
 export const verifyEmail = async (req, res) => {
-  const { userId, otp } = req.body;
+  const { otp } = req.body;
+  const userId = req.userId;
 
   if (!userId || !otp) {
     return res.status(400).json({ success: false, message: "Missing Details" });
