@@ -4,6 +4,7 @@ import "dotenv/config";
 import cookieParser from "cookie-parser";
 import connectDB from "./config/mongodb.js";
 import authRouter from "./routes/auth.route.js";
+import userRouter from "./routes/user.route.js";
 
 const app = express();
 const port = process.env.PORT || 4000;
@@ -17,6 +18,7 @@ app.get("/", (req, res) => {
   res.send("MERN Authentication API is running...");
 });
 app.use("/api/auth", authRouter);
+app.use("/api/user", userRouter);
 
 app.listen(port, () => {
   console.log(`Server started on PORT:${port}`);
