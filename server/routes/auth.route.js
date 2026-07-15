@@ -4,6 +4,7 @@ import {
   login,
   logout,
   register,
+  resetPassword,
   sendResetOtp,
   sendVerifyOtp,
   verifyEmail,
@@ -19,5 +20,6 @@ router.post("/send-verify-otp", authMiddleware, sendVerifyOtp);
 router.post("/verify-account", authMiddleware, verifyEmail);
 router.post("/is-auth", authMiddleware, isAuthenticated);
 router.post("/send-reset-otp", sendResetOtp);
+router.post("/reset-password", resetPassword);
 
 export default router;
