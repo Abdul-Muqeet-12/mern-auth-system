@@ -4,7 +4,9 @@ export const getUserProfile = async (req, res) => {
   try {
     const user = await userModel
       .findById(req.userId)
-      .select("-password -verifyOtp -verifyOtpExpireAt");
+      .select(
+        "-password -verifyOtp -verifyOtpExpireAt -resetOtp -resetOtpExpireAt",
+      );
 
     if (!user) {
       return res
