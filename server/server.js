@@ -12,7 +12,7 @@ connectDB();
 
 app.use(express.json());
 app.use(cookieParser());
-app.use(cors({ credentials: true }));
+app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
 
 app.get("/", (req, res) => {
   res.send("MERN Authentication API is running...");
