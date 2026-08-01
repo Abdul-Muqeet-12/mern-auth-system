@@ -8,6 +8,7 @@ import {
   sendResetOtp,
   sendVerifyOtp,
   verifyEmail,
+  verifyResetOtp,
 } from "../controllers/auth.controller.js";
 import authMiddleware from "../middleware/auth.middleware.js";
 
@@ -20,6 +21,7 @@ router.post("/send-verify-otp", authMiddleware, sendVerifyOtp);
 router.post("/verify-account", authMiddleware, verifyEmail);
 router.get("/is-auth", authMiddleware, isAuthenticated);
 router.post("/send-reset-otp", sendResetOtp);
+router.post("/verify-reset-otp", verifyResetOtp);
 router.post("/reset-password", resetPassword);
 
 export default router;

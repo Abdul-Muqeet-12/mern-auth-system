@@ -15,11 +15,15 @@ export const AppContextProvider = (props) => {
   const getAuthState = async () => {
     try {
       const { data } = await axios.get(backendUrl + "/api/auth/is-auth");
-      setIsLoggedIn(true);
 
-      await getUserData();
+      if (data.success) {
+        setIsLoggedIn(true);
+        await getUserData();
+      }
     } catch (error) {
-      toast.error(error.response.data.message);
+      if (error.response?.status !== 401) {
+        toast.error(error.response?.data?.message || "Something went wrong");
+      }
     }
   };
 
@@ -28,7 +32,7 @@ export const AppContextProvider = (props) => {
       const { data } = await axios.get(backendUrl + "/api/user/profile");
       data.success ? setUserData(data.user) : toast.error(data.message);
     } catch (error) {
-      toast.error(error.response.data.message);
+      toast.error(error.response?.data?.message || "Something went wrong");
     }
   };
 
