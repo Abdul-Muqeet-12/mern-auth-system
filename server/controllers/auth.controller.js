@@ -4,28 +4,36 @@ import userModel from "../models/user.model.js";
 import transporter from "../config/nodemailer.js";
 
 export const register = async (req, res) => {
+  console.log("1. Register API Hit");
   const { name, email, password } = req.body;
 
   if (!name || !email || !password) {
     return res.status(400).json({ success: false, message: "Missing Details" });
   }
   try {
+    console.log("2. Checking existing user");
     const existingUser = await userModel.findOne({ email });
+    console.log("3. Existing User:", existingUser);
 
     if (existingUser) {
+      console.log("4. User already exists");
       return res
         .status(409)
         .json({ success: false, message: "User already exists" });
     }
+    console.log("5. Hashing password");
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    console.log("6. Saving user");
 
     const user = new userModel({ name, email, password: hashedPassword });
     await user.save();
+    console.log("7. User Saved");
 
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
       expiresIn: "7d",
     });
+    console.log("8. Token Created");
 
     res.cookie("token", token, {
       httpOnly: true,
@@ -33,6 +41,8 @@ export const register = async (req, res) => {
       sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
+    console.log("9. Cookie Set");
+    console.log("10. Sending Response");
 
     //Sending Welcome Email
     const mailOptions = {
