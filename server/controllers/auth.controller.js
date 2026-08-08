@@ -4,36 +4,55 @@ import userModel from "../models/user.model.js";
 import transporter from "../config/nodemailer.js";
 
 export const register = async (req, res) => {
-  console.log("1. Register API Hit");
+  const requestId = Date.now();
+
+  console.log(`[${requestId}] REGISTER API HIT`);
+  console.log(`[${requestId}] Request Body:`, {
+    name: req.body.name,
+    email: req.body.email,
+  });
+
   const { name, email, password } = req.body;
 
+  console.log(`[${requestId}] Email:`, email);
+
   if (!name || !email || !password) {
+    console.log(`[${requestId}] Missing details`);
+
     return res.status(400).json({ success: false, message: "Missing Details" });
   }
   try {
-    console.log("2. Checking existing user");
+    console.log(`[${requestId}] Checking existing user`);
+
     const existingUser = await userModel.findOne({ email });
-    console.log("3. Existing User:", existingUser);
+
+    console.log(`[${requestId}] Existing User:`, existingUser ? "YES" : "NO");
 
     if (existingUser) {
-      console.log("4. User already exists");
+      console.log(`[${requestId}] User already exists`);
+
       return res
         .status(409)
         .json({ success: false, message: "User already exists" });
     }
-    console.log("5. Hashing password");
+    console.log(`[${requestId}] Hashing password`);
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    console.log("6. Saving user");
+
+    console.log(`[${requestId}] Password hashed`);
+
+    console.log(`[${requestId}] Saving user`);
 
     const user = new userModel({ name, email, password: hashedPassword });
     await user.save();
-    console.log("7. User Saved");
+
+    console.log(`[${requestId}] User saved successfully`);
 
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
       expiresIn: "7d",
     });
-    console.log("8. Token Created");
+
+    console.log(`[${requestId}] Token created`);
 
     res.cookie("token", token, {
       httpOnly: true,
@@ -41,8 +60,8 @@ export const register = async (req, res) => {
       sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
-    console.log("9. Cookie Set");
-    console.log("10. Sending Response");
+
+    console.log(`[${requestId}] Cookie set`);
 
     //Sending Welcome Email
     const mailOptions = {
@@ -52,15 +71,17 @@ export const register = async (req, res) => {
       text: `Thank you for registering. Your account has been created with email id: ${email}`,
     };
 
-    console.log("User Saved");
+    console.log(`[${requestId}] BEFORE SEND EMAIL`);
 
-    console.log("Sending Email...");
+    console.time(`[${requestId}] BREVO EMAIL TIME`);
 
     const info = await transporter.sendMail(mailOptions);
 
-    console.log(info);
+    console.timeEnd(`[${requestId}] BREVO EMAIL TIME`);
 
-    console.log("Email Sent");
+    console.log(`[${requestId}] AFTER SEND EMAIL`);
+
+    console.log(`[${requestId}] BEFORE RESPONSE`);
 
     return res.status(201).json({
       success: true,
@@ -72,7 +93,12 @@ export const register = async (req, res) => {
       },
     });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    console.error(`[${requestId}] REGISTER ERROR:`, error);
+
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
