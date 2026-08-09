@@ -4,55 +4,28 @@ import userModel from "../models/user.model.js";
 import resend from "../config/resend.js";
 
 export const register = async (req, res) => {
-  const requestId = Date.now();
-
-  console.log(`[${requestId}] REGISTER API HIT`);
-  console.log(`[${requestId}] Request Body:`, {
-    name: req.body.name,
-    email: req.body.email,
-  });
-
   const { name, email, password } = req.body;
 
-  console.log(`[${requestId}] Email:`, email);
-
   if (!name || !email || !password) {
-    console.log(`[${requestId}] Missing details`);
-
     return res.status(400).json({ success: false, message: "Missing Details" });
   }
   try {
-    console.log(`[${requestId}] Checking existing user`);
-
     const existingUser = await userModel.findOne({ email });
 
-    console.log(`[${requestId}] Existing User:`, existingUser ? "YES" : "NO");
-
     if (existingUser) {
-      console.log(`[${requestId}] User already exists`);
-
       return res
         .status(409)
         .json({ success: false, message: "User already exists" });
     }
-    console.log(`[${requestId}] Hashing password`);
 
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    console.log(`[${requestId}] Password hashed`);
-
-    console.log(`[${requestId}] Saving user`);
 
     const user = new userModel({ name, email, password: hashedPassword });
     await user.save();
 
-    console.log(`[${requestId}] User saved successfully`);
-
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
       expiresIn: "7d",
     });
-
-    console.log(`[${requestId}] Token created`);
 
     res.cookie("token", token, {
       httpOnly: true,
@@ -60,8 +33,6 @@ export const register = async (req, res) => {
       sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
-
-    console.log(`[${requestId}] Cookie set`);
 
     //Sending Welcome Email
     const { data, error } = await resend.emails.send({
@@ -76,18 +47,6 @@ export const register = async (req, res) => {
       throw new Error(error.message);
     }
 
-    console.log("Welcome Email Sent:", data);
-
-    console.log(`[${requestId}] BEFORE SEND EMAIL`);
-
-    console.time(`[${requestId}] BREVO EMAIL TIME`);
-
-    console.timeEnd(`[${requestId}] BREVO EMAIL TIME`);
-
-    console.log(`[${requestId}] AFTER SEND EMAIL`);
-
-    console.log(`[${requestId}] BEFORE RESPONSE`);
-
     return res.status(201).json({
       success: true,
       message: "User Registered Successfully",
@@ -98,8 +57,6 @@ export const register = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error(`[${requestId}] REGISTER ERROR:`, error);
-
     return res.status(500).json({
       success: false,
       message: error.message,
