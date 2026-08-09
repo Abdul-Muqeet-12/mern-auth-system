@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import userModel from "../models/user.model.js";
-import transporter from "../config/nodemailer.js";
+import resend from "../config/resend.js";
 
 export const register = async (req, res) => {
   const requestId = Date.now();
@@ -64,18 +64,23 @@ export const register = async (req, res) => {
     console.log(`[${requestId}] Cookie set`);
 
     //Sending Welcome Email
-    const mailOptions = {
+    const { data, error } = await resend.emails.send({
       from: process.env.SENDER_EMAIL,
-      to: email,
+      to: [email],
       subject: `Welcome ${name}`,
       text: `Thank you for registering. Your account has been created with email id: ${email}`,
-    };
+    });
+
+    if (error) {
+      console.error("Resend Error:", error);
+      throw new Error(error.message);
+    }
+
+    console.log("Welcome Email Sent:", data);
 
     console.log(`[${requestId}] BEFORE SEND EMAIL`);
 
     console.time(`[${requestId}] BREVO EMAIL TIME`);
-
-    const info = await transporter.sendMail(mailOptions);
 
     console.timeEnd(`[${requestId}] BREVO EMAIL TIME`);
 
@@ -194,10 +199,10 @@ export const sendVerifyOtp = async (req, res) => {
     user.verifyOtpExpireAt = Date.now() + 10 * 60 * 1000;
     await user.save();
 
-    const mailOptions = {
+    const { data, error } = await resend.emails.send({
       from: process.env.SENDER_EMAIL,
-      to: user.email,
-      subject: `Account Verification OTP`,
+      to: [user.email],
+      subject: "Account Verification OTP",
       text: `
               Hello ${user.name},
 
@@ -206,10 +211,15 @@ export const sendVerifyOtp = async (req, res) => {
               This OTP will expire in 10 minutes.
 
               Thank you.
-            `,
-    };
+      `,
+    });
 
-    await transporter.sendMail(mailOptions);
+    if (error) {
+      console.error("Resend Error:", error);
+      throw new Error(error.message);
+    }
+
+    console.log("Verification Email Sent:", data);
 
     return res.status(200).json({
       success: true,
@@ -315,22 +325,27 @@ export const sendResetOtp = async (req, res) => {
 
     await user.save();
 
-    const mailOptions = {
+    const { data, error } = await resend.emails.send({
       from: process.env.SENDER_EMAIL,
-      to: user.email,
+      to: [user.email],
       subject: "Password Reset OTP",
       text: `
-              Hello ${user.name},
+        Hello ${user.name},
 
-              Your password reset OTP is ${otp}.
+        Your password reset OTP is ${otp}.
 
-              This OTP will expire in 10 minutes.
+        This OTP will expire in 10 minutes.
 
-              If you did not request a password reset, please ignore this email.
-            `,
-    };
+        If you did not request a password reset, please ignore this email.
+      `,
+    });
 
-    await transporter.sendMail(mailOptions);
+    if (error) {
+      console.error("Resend Error:", error);
+      throw new Error(error.message);
+    }
+
+    console.log("Password Reset Email Sent:", data);
 
     return res
       .status(200)
