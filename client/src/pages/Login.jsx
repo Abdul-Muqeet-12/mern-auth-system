@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import { AppContext } from "../context/AppContext";
 import axios from "axios";
 import { toast } from "react-toastify";
+import { Formik, Form, Field, ErrorMessage } from "formik";
+import { loginSchema, registerSchema } from "../validation/authSchema";
 
 function Login() {
   const navigate = useNavigate();
@@ -11,46 +13,42 @@ function Login() {
   const { backendUrl, setIsLoggedIn, getUserData } = useContext(AppContext);
 
   const [state, setState] = useState("Login");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
 
-  const onSubmitHandler = async (e) => {
+  const onSubmitHandler = async (values, { setSubmitting }) => {
     try {
-      e.preventDefault();
-
       axios.defaults.withCredentials = true;
 
       if (state === "Sign Up") {
-        const { data } = await axios.post(backendUrl + "/api/auth/register", {
-          name,
-          email,
-          password,
-        });
+        const { data } = await axios.post(
+          backendUrl + "/api/auth/register",
+          values,
+        );
         if (data.success) {
           setIsLoggedIn(true);
           await getUserData();
           navigate("/");
-          toast.success("User Register Successfully");
+          toast.success(data.message);
         } else {
           toast.error(data.message);
         }
       } else {
-        const { data } = await axios.post(backendUrl + "/api/auth/login", {
-          email,
-          password,
-        });
+        const { data } = await axios.post(
+          backendUrl + "/api/auth/login",
+          values,
+        );
         if (data.success) {
           setIsLoggedIn(true);
           await getUserData();
           navigate("/");
-          toast.success("Login Successfully");
+          toast.success(data.message);
         } else {
           toast.error(data.message);
         }
       }
     } catch (error) {
       toast.error(error.response?.data?.message || "Something went wrong");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -71,56 +69,86 @@ function Login() {
             ? "Create your account"
             : "Login to your account!"}
         </p>
-        <form onSubmit={onSubmitHandler}>
-          {state === "Sign Up" && (
-            <div className="mb-4 flex items-center gap-3 w-full px-5 py-2.5 rounded-full bg-[#333A5C]">
-              <img src={assets.person_icon} alt="person-icon" />
-              <input
-                onChange={(e) => setName(e.target.value)}
-                value={name}
-                className="bg-transparent outline-none text-white"
-                type="text"
-                placeholder="Enter Full Name"
-                required
-              />
-            </div>
-          )}
+        <Formik
+          initialValues={{ name: "", email: "", password: "" }}
+          validationSchema={state === "Sign Up" ? registerSchema : loginSchema}
+          onSubmit={onSubmitHandler}
+        >
+          {({ isSubmitting }) => (
+            <Form>
+              {state === "Sign Up" && (
+                <div className="mb-4">
+                  <div className="flex items-center gap-3 w-full px-5 py-2.5 rounded-full bg-[#333A5C]">
+                    <img src={assets.person_icon} alt="person-icon" />
+                    <Field
+                      type="text"
+                      name="name"
+                      placeholder="Enter Full Name"
+                      className="bg-transparent outline-none text-white w-full"
+                    />
+                  </div>
+                  <ErrorMessage
+                    name="name"
+                    component="p"
+                    className="text-red-400 text-xs mt-1 ml-4"
+                  />
+                </div>
+              )}
 
-          <div className="mb-4 flex items-center gap-3 w-full px-5 py-2.5 rounded-full bg-[#333A5C]">
-            <img src={assets.mail_icon} alt="mail-icon" />
-            <input
-              onChange={(e) => setEmail(e.target.value)}
-              value={email}
-              className="bg-transparent outline-none text-white"
-              type="email"
-              placeholder="Enter your Email"
-              required
-            />
-          </div>
-          <div className="mb-4 flex items-center gap-3 w-full px-5 py-2.5 rounded-full bg-[#333A5C]">
-            <img src={assets.lock_icon} alt="lock-icon" />
-            <input
-              onChange={(e) => setPassword(e.target.value)}
-              value={password}
-              className="bg-transparent outline-none text-white"
-              type="password"
-              placeholder="Enter Password"
-              required
-            />
-          </div>
-          <p
-            onClick={() => navigate("/reset-password")}
-            className="text-indigo-500 cursor-pointer inline"
-          >
-            Forgot Password?
-          </p>
-          <button className="w-full py-2.5 rounded-full bg-linear-to-br from-indigo-500 to-indigo-900 text-white font-medium cursor-pointer mt-4">
-            {state}
-          </button>
-        </form>
+              <div className="mb-4">
+                <div className="flex items-center gap-3 w-full px-5 py-2.5 rounded-full bg-[#333A5C]">
+                  <img src={assets.mail_icon} alt="mail-icon" />
+                  <Field
+                    type="email"
+                    name="email"
+                    placeholder="Enter your Email"
+                    className="bg-transparent outline-none text-white w-full"
+                  />
+                </div>
+                <ErrorMessage
+                  name="email"
+                  component="p"
+                  className="text-red-400 text-xs mt-1 ml-4"
+                />
+              </div>
+
+              <div className="mb-4">
+                <div className="flex items-center gap-3 w-full px-5 py-2.5 rounded-full bg-[#333A5C]">
+                  <img src={assets.lock_icon} alt="lock-icon" />
+                  <Field
+                    type="password"
+                    name="password"
+                    placeholder="Enter Password"
+                    className="bg-transparent outline-none text-white w-full"
+                  />
+                </div>
+                <ErrorMessage
+                  name="password"
+                  component="p"
+                  className="text-red-400 text-xs mt-1 ml-4"
+                />
+              </div>
+
+              <p
+                onClick={() => navigate("/reset-password")}
+                className="text-indigo-500 cursor-pointer inline"
+              >
+                Forgot Password?
+              </p>
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className={`w-full py-2.5 rounded-full text-white font-medium mt-4 ${isSubmitting ? "bg-gray-500 cursor-not-allowed" : "bg-linear-to-br from-indigo-500 to-indigo-900 cursor-pointer"}`}
+              >
+                {isSubmitting ? "Please wait..." : state}
+              </button>
+            </Form>
+          )}
+        </Formik>
         {state === "Sign Up" ? (
           <p className="text-gray-400 text-center text-sm mt-4">
-            Already have an account?{" "}
+            Already have an account?
             <span
               onClick={() => setState("Login")}
               className="text-blue-400 cursor-pointer underline"
@@ -130,7 +158,7 @@ function Login() {
           </p>
         ) : (
           <p className="text-gray-400 text-center text-sm mt-4">
-            Don't have an account?{" "}
+            Don't have an account?
             <span
               onClick={() => setState("Sign Up")}
               className="text-blue-400 cursor-pointer underline"

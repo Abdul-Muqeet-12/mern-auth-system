@@ -4,6 +4,12 @@ import { useContext, useRef, useState } from "react";
 import { AppContext } from "../context/AppContext";
 import axios from "axios";
 import { toast } from "react-toastify";
+import { Formik, Form, Field, ErrorMessage } from "formik";
+import {
+  resetEmailSchema,
+  otpSchema,
+  newPasswordSchema,
+} from "../validation/authSchema";
 
 function ResetPassword() {
   const { backendUrl } = useContext(AppContext);
@@ -11,9 +17,8 @@ function ResetPassword() {
 
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
-  const [newPassword, setNewPassword] = useState("");
+  const [otp, setOtp] = useState("");
   const [isEmailSent, setIsEmailSent] = useState(false);
-  const [otp, setOtp] = useState(0);
   const [isOtpSubmitted, setIsOtpSubmitted] = useState(false);
 
   const inputRefs = useRef([]);
@@ -40,41 +45,40 @@ function ResetPassword() {
     });
   };
 
-  const onSubmitEmail = async (e) => {
-    e.preventDefault();
+  const onSubmitEmail = async (values, { setSubmitting }) => {
     try {
       const { data } = await axios.post(
         backendUrl + "/api/auth/send-reset-otp",
-        { email },
+        values,
       );
-      data.success ? toast.success(data.message) : toast.error(data.message);
-      data.success && setIsEmailSent(true);
+
+      if (data.success) {
+        setEmail(values.email);
+        toast.success(data.message);
+        setIsEmailSent(true);
+      } else {
+        toast.error(data.message);
+      }
     } catch (error) {
       toast.error(error.response?.data?.message || "Something went wrong");
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const onSubmitOtp = async (e) => {
-    e.preventDefault();
-
+  const onSubmitOtp = async (values, { setSubmitting, resetForm }) => {
     try {
-      const otpArray = inputRefs.current.map((e) => e.value);
-
-      const otp = otpArray.join("");
-
       const { data } = await axios.post(
         backendUrl + "/api/auth/verify-reset-otp",
         {
-          email,
-          otp,
+          email: email,
+          otp: values.otp,
         },
       );
 
       if (data.success) {
-        setOtp(otp);
-
+        setOtp(values.otp);
         setIsOtpSubmitted(true);
-
         toast.success(data.message);
       } else {
         toast.error(data.message);
@@ -82,27 +86,34 @@ function ResetPassword() {
     } catch (error) {
       toast.error(error.response?.data?.message || "Something went wrong");
 
-      inputRefs.current.forEach((input) => {
-        if (input) {
-          input.value = "";
-        }
-      });
-
+      resetForm();
       inputRefs.current[0]?.focus();
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const onSubmmitNewPassword = async (e) => {
-    e.preventDefault();
+  const onSubmitNewPassword = async (values, { setSubmitting }) => {
     try {
       const { data } = await axios.post(
         backendUrl + "/api/auth/reset-password",
-        { email, otp, newPassword },
+        {
+          email,
+          otp,
+          newPassword: values.newPassword,
+        },
       );
-      data.success ? toast.success(data.message) : toast.error(data.message);
-      data.success && navigate("/login");
+
+      if (data.success) {
+        toast.success(data.message);
+        navigate("/login");
+      } else {
+        toast.error(data.message);
+      }
     } catch (error) {
       toast.error(error.response?.data?.message || "Something went wrong");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -118,98 +129,203 @@ function ResetPassword() {
       {/* Enter Email Form */}
 
       {!isEmailSent && (
-        <form
+        <Formik
+          initialValues={{ email: "" }}
+          validationSchema={resetEmailSchema}
           onSubmit={onSubmitEmail}
-          className="bg-slate-900 p-8 rounded-lg shadow-lg w-96 text-sm"
         >
-          <h1 className="text-white text-2xl font-semibold text-center mb-4">
-            Reset Password
-          </h1>
-          <p className="text-center mb-6 text-indigo-300">
-            Enter your registered email address
-          </p>
+          {({ isSubmitting }) => (
+            <Form className="bg-slate-900 p-8 rounded-lg shadow-lg w-96 text-sm">
+              <h1 className="text-white text-2xl font-semibold text-center mb-4">
+                Reset Password
+              </h1>
 
-          <div className="mb-4 flex items-center gap-3 w-full px-5 py-2.5 rounded-full bg-[#333A5C]">
-            <img src={assets.mail_icon} alt="mail-icon" className="w-3 h-3" />
-            <input
-              type="email"
-              placeholder="Enter your Email"
-              className="bg-transparent outline-none text-white"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </div>
-          <button className="w-full py-2.5 cursor-pointer bg-linear-to-br from-indigo-500 to-indigo-900 text-white rounded-full mt-3">
-            Submit
-          </button>
-        </form>
+              <p className="text-center mb-6 text-indigo-300">
+                Enter your registered email address
+              </p>
+
+              <div className="mb-4">
+                <div className="flex items-center gap-3 w-full px-5 py-2.5 rounded-full bg-[#333A5C]">
+                  <img
+                    src={assets.mail_icon}
+                    alt="mail-icon"
+                    className="w-3 h-3"
+                  />
+
+                  <Field
+                    type="email"
+                    name="email"
+                    placeholder="Enter your Email"
+                    className="bg-transparent outline-none text-white w-full"
+                  />
+                </div>
+
+                <ErrorMessage
+                  name="email"
+                  component="p"
+                  className="text-red-400 text-xs mt-1 ml-4"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full py-2.5 cursor-pointer bg-linear-to-br from-indigo-500 to-indigo-900 text-white rounded-full mt-3"
+              >
+                {isSubmitting ? "Sending..." : "Submit"}
+              </button>
+            </Form>
+          )}
+        </Formik>
       )}
 
       {/* OTP From */}
 
       {!isOtpSubmitted && isEmailSent && (
-        <form
+        <Formik
+          initialValues={{ otp: "" }}
+          validationSchema={otpSchema}
           onSubmit={onSubmitOtp}
-          className="bg-slate-900 p-8 rounded-lg shadow-lg w-96 text-sm"
         >
-          <h1 className="text-white text-2xl font-semibold text-center mb-4">
-            Reset Password OTP
-          </h1>
-          <p className="text-center mb-6 text-indigo-300">
-            Enter the 6-digit code sent to your email id.
-          </p>
-          <div className="flex justify-between mb-8" onPaste={handlePaste}>
-            {Array(6)
-              .fill(0)
-              .map((_, index) => (
-                <input
-                  type="text"
-                  maxLength={1}
-                  key={index}
-                  required
-                  className="w-12 h-12 bg-[#333A5C] text-white text-center text-xl rounded-md"
-                  ref={(e) => (inputRefs.current[index] = e)}
-                  onInput={(e) => handleInput(e, index)}
-                  onKeyDown={(e) => handleKeyDown(e, index)}
-                />
-              ))}
-          </div>
-          <button className="w-full py-2.5 text-white cursor-pointer bg-linear-to-r from-indigo-500 to-indigo-900 rounded-full">
-            Submit
-          </button>
-        </form>
+          {({ values, setFieldValue, isSubmitting }) => (
+            <Form className="bg-slate-900 p-8 rounded-lg shadow-lg w-96 text-sm">
+              <h1 className="text-white text-2xl font-semibold text-center mb-4">
+                Reset Password OTP
+              </h1>
+
+              <p className="text-center mb-6 text-indigo-300">
+                Enter the 6-digit code sent to your email id.
+              </p>
+
+              <div
+                className="flex justify-between mb-2"
+                onPaste={(e) => {
+                  e.preventDefault();
+
+                  const paste = e.clipboardData
+                    .getData("text")
+                    .replace(/\D/g, "")
+                    .slice(0, 6);
+
+                  setFieldValue("otp", paste);
+
+                  paste.split("").forEach((char, index) => {
+                    if (inputRefs.current[index]) {
+                      inputRefs.current[index].value = char;
+                    }
+                  });
+
+                  inputRefs.current[Math.min(paste.length, 5)]?.focus();
+                }}
+              >
+                {Array(6)
+                  .fill(0)
+                  .map((_, index) => (
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={1}
+                      key={index}
+                      className="w-12 h-12 bg-[#333A5C] text-white text-center text-xl rounded-md"
+                      ref={(e) => (inputRefs.current[index] = e)}
+                      value={values.otp[index] || ""}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, "");
+
+                        const otpArray = values.otp.split("");
+
+                        otpArray[index] = value;
+
+                        const newOtp = otpArray.join("").slice(0, 6);
+
+                        setFieldValue("otp", newOtp);
+
+                        if (value && index < inputRefs.current.length - 1) {
+                          inputRefs.current[index + 1]?.focus();
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (
+                          e.key === "Backspace" &&
+                          !values.otp[index] &&
+                          index > 0
+                        ) {
+                          inputRefs.current[index - 1]?.focus();
+                        }
+                      }}
+                    />
+                  ))}
+              </div>
+
+              <ErrorMessage
+                name="otp"
+                component="p"
+                className="text-red-400 text-xs mt-2"
+              />
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full py-2.5 mt-4 text-white cursor-pointer bg-linear-to-r from-indigo-500 to-indigo-900 rounded-full"
+              >
+                {isSubmitting ? "Verifying..." : "Submit"}
+              </button>
+            </Form>
+          )}
+        </Formik>
       )}
 
       {/* Enter new Password */}
 
       {isOtpSubmitted && isEmailSent && (
-        <form
-          onSubmit={onSubmmitNewPassword}
-          className="bg-slate-900 p-8 rounded-lg shadow-lg w-96 text-sm"
+        <Formik
+          initialValues={{ newPassword: "" }}
+          validationSchema={newPasswordSchema}
+          onSubmit={onSubmitNewPassword}
         >
-          <h1 className="text-white text-2xl font-semibold text-center mb-4">
-            New Password
-          </h1>
-          <p className="text-center mb-6 text-indigo-300">
-            Enter the new password below
-          </p>
+          {({ isSubmitting }) => (
+            <Form className="bg-slate-900 p-8 rounded-lg shadow-lg w-96 text-sm">
+              <h1 className="text-white text-2xl font-semibold text-center mb-4">
+                New Password
+              </h1>
 
-          <div className="mb-4 flex items-center gap-3 w-full px-5 py-2.5 rounded-full bg-[#333A5C]">
-            <img src={assets.lock_icon} alt="lock_icon" className="w-3 h-3" />
-            <input
-              type="password"
-              placeholder="Enter new password"
-              className="bg-transparent outline-none text-white"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              required
-            />
-          </div>
-          <button className="w-full py-2.5 cursor-pointer bg-linear-to-br from-indigo-500 to-indigo-900 text-white rounded-full mt-3">
-            Submit
-          </button>
-        </form>
+              <p className="text-center mb-6 text-indigo-300">
+                Enter the new password below
+              </p>
+
+              <div className="mb-4">
+                <div className="flex items-center gap-3 w-full px-5 py-2.5 rounded-full bg-[#333A5C]">
+                  <img
+                    src={assets.lock_icon}
+                    alt="lock_icon"
+                    className="w-3 h-3"
+                  />
+
+                  <Field
+                    type="password"
+                    name="newPassword"
+                    placeholder="Enter new password"
+                    className="bg-transparent outline-none text-white w-full"
+                  />
+                </div>
+
+                <ErrorMessage
+                  name="newPassword"
+                  component="p"
+                  className="text-red-400 text-xs mt-1 ml-4"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full py-2.5 cursor-pointer bg-linear-to-br from-indigo-500 to-indigo-900 text-white rounded-full mt-3"
+              >
+                {isSubmitting ? "Resetting..." : "Submit"}
+              </button>
+            </Form>
+          )}
+        </Formik>
       )}
     </div>
   );
